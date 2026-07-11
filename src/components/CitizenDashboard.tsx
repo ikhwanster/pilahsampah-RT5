@@ -6,6 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import { User, TrashDeposit, RewardItem, RewardClaim, PickupSchedule, SystemNotification } from '../types.ts';
 import { api } from '../utils/api.ts';
+import confetti from 'canvas-confetti';
 import { 
   LogOut, 
   Trash2, 
@@ -57,6 +58,14 @@ export default function CitizenDashboard({ user: initialUser, onLogout }: Citize
   const [formLoading, setFormLoading] = useState(false);
   const [formError, setFormError] = useState('');
   const [formSuccess, setFormSuccess] = useState('');
+
+  // Celebration states
+  const [showCelebration, setShowCelebration] = useState(false);
+  const [celebrationDetails, setCelebrationDetails] = useState<{
+    weight: number;
+    category: string;
+    points: number;
+  } | null>(null);
 
   // Form states: Penilaian Layanan
   const [rating, setRating] = useState(5);
@@ -124,6 +133,40 @@ export default function CitizenDashboard({ user: initialUser, onLogout }: Citize
         notes
       });
       setDeposits([newDeposit, ...deposits]);
+
+      const ptsEst = Math.round(Number(weight) * getPointsPerKg(category));
+      setCelebrationDetails({
+        weight: Number(weight),
+        category,
+        points: ptsEst
+      });
+      setShowCelebration(true);
+
+      // Trigger canvas-confetti
+      confetti({
+        particleCount: 100,
+        spread: 70,
+        origin: { y: 0.6 }
+      });
+
+      // Side bursts
+      setTimeout(() => {
+        confetti({
+          particleCount: 50,
+          angle: 60,
+          spread: 55,
+          origin: { x: 0, y: 0.8 }
+        });
+      }, 150);
+      setTimeout(() => {
+        confetti({
+          particleCount: 50,
+          angle: 120,
+          spread: 55,
+          origin: { x: 1, y: 0.8 }
+        });
+      }, 250);
+
       setFormSuccess(`Sukses! Setoran sampah ${weight} kg berhasil diajukan ke RT. Menunggu verifikasi.`);
       setWeight('');
       setNotes('');
@@ -1199,6 +1242,95 @@ export default function CitizenDashboard({ user: initialUser, onLogout }: Citize
           <span>Jadwal</span>
         </button>
       </div>
+
+      {/* Celebration Success Modal Overlay */}
+      <AnimatePresence>
+        {showCelebration && celebrationDetails && (
+          <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-md" id="celebration-modal">
+            {/* Backdrop */}
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0"
+              onClick={() => setShowCelebration(false)}
+            ></motion.div>
+
+            {/* Modal Body */}
+            <motion.div
+              initial={{ scale: 0.9, y: 20, opacity: 0 }}
+              animate={{ scale: 1, y: 0, opacity: 1, transition: { type: 'spring', damping: 20, stiffness: 300 } }}
+              exit={{ scale: 0.9, y: 20, opacity: 0 }}
+              className="bg-white rounded-[32px] p-6 sm:p-8 max-w-sm w-full shadow-2xl border border-natural-card-border relative overflow-hidden text-center z-10"
+            >
+              {/* Decorative background blurs */}
+              <div className="absolute top-0 left-0 w-full h-full pointer-events-none overflow-hidden">
+                <div className="absolute -left-12 -top-12 w-24 h-24 bg-natural-green/10 rounded-full filter blur-xl"></div>
+                <div className="absolute -right-12 -bottom-12 w-24 h-24 bg-natural-coral/10 rounded-full filter blur-xl"></div>
+              </div>
+
+              {/* Animated checkmark indicator */}
+              <div className="relative inline-flex items-center justify-center w-16 h-16 bg-natural-green/10 rounded-full text-natural-green mb-4">
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: [0, 1.2, 1] }}
+                  transition={{ delay: 0.15, duration: 0.4 }}
+                >
+                  <CheckCircle className="w-10 h-10" />
+                </motion.div>
+                <motion.div 
+                  className="absolute inset-0 border border-natural-green/30 rounded-full"
+                  animate={{ scale: [1, 1.4, 1.6], opacity: [1, 0.4, 0] }}
+                  transition={{ repeat: Infinity, duration: 1.5, ease: "easeOut" }}
+                />
+              </div>
+
+              <h3 className="font-serif font-black text-2xl text-natural-text leading-tight mb-2">Setoran Berhasil!</h3>
+              <p className="text-xs text-natural-muted mb-4 font-semibold">
+                Terima kasih atas kepedulian Anda memilah sampah di rumah. Anda luar biasa!
+              </p>
+
+              {/* Submission Recap Card */}
+              <div className="bg-natural-bg/60 border border-natural-border/40 rounded-2xl p-4 space-y-3.5 mb-5 relative text-left">
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-natural-muted font-semibold">Kategori</span>
+                  <span className="font-bold text-natural-text capitalize">
+                    {celebrationDetails.category === 'plastic' && 'Plastik'}
+                    {celebrationDetails.category === 'paper' && 'Kertas'}
+                    {celebrationDetails.category === 'organic' && 'Organik'}
+                    {celebrationDetails.category === 'metal' && 'Logam'}
+                    {celebrationDetails.category === 'glass' && 'Kaca'}
+                    {celebrationDetails.category === 'other' && 'Lainnya'}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-natural-muted font-semibold">Berat Sampah</span>
+                  <span className="font-bold text-natural-text">{celebrationDetails.weight} kg</span>
+                </div>
+                <div className="border-t border-natural-border/30 my-2 pt-2 flex justify-between items-center">
+                  <span className="text-natural-muted font-semibold text-xs">Estimasi Poin</span>
+                  <motion.div 
+                    animate={{ scale: [1, 1.1, 1] }}
+                    transition={{ repeat: Infinity, duration: 2, repeatDelay: 1 }}
+                    className="flex items-center gap-1 bg-natural-green text-white px-2.5 py-0.5 rounded-full font-black text-xs shadow-sm"
+                  >
+                    <Sparkles className="w-3 h-3" />
+                    <span>+{celebrationDetails.points} Poin</span>
+                  </motion.div>
+                </div>
+              </div>
+
+              <button
+                id="btn-close-celebration"
+                onClick={() => setShowCelebration(false)}
+                className="w-full py-2.5 px-4 rounded-xl font-bold text-xs text-white bg-natural-green hover:bg-[#6C8D74] shadow-md transition-all cursor-pointer"
+              >
+                Kembali ke Dashboard
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
     </div>
   );
