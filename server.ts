@@ -30,7 +30,7 @@ import {
   encrypt, 
   decrypt, 
   hashPassword 
-} from './src/server_db.ts';
+} from './src/server_db';
 import { 
   User, 
   TrashDeposit, 
@@ -39,10 +39,17 @@ import {
   PickupSchedule, 
   SystemNotification, 
   TrashCategory 
-} from './src/types.ts';
+} from './src/types';
 
 const app = express();
 const PORT = 3000;
+
+// Helper to handle async route errors
+const asyncHandler = (fn: (req: express.Request, res: express.Response, next: express.NextFunction) => Promise<any>) => {
+  return (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    Promise.resolve(fn(req, res, next)).catch(next);
+  };
+};
 
 app.use(express.json());
 
@@ -181,14 +188,14 @@ app.post('/api/auth/login', async (req, res) => {
 });
 
 // Get profile
-app.get('/api/auth/me', async (req, res) => {
+app.get('/api/auth/me', asyncHandler(async (req, res) => {
   const user = await getAuthUser(req);
   if (!user) {
     res.status(401).json({ error: 'Sesi tidak valid / Silakan login kembali.' });
     return;
   }
   res.json({ user });
-});
+}));
 
 // ==========================================
 // 2. TRASH DEPOSITS API
@@ -207,7 +214,7 @@ const getPointsPerKg = (category: TrashCategory): number => {
 };
 
 // Get trash deposits
-app.get('/api/deposits', async (req, res) => {
+app.get('/api/deposits', asyncHandler(async (req, res) => {
   const user = await getAuthUser(req);
   if (!user) {
     res.status(401).json({ error: 'Unauthorized' });
@@ -222,10 +229,10 @@ app.get('/api/deposits', async (req, res) => {
     const userDeposits = deposits.filter(d => d.userId === user.id);
     res.json(userDeposits);
   }
-});
+}));
 
 // Submit a new deposit (Citizen only)
-app.post('/api/deposits', async (req, res) => {
+app.post('/api/deposits', asyncHandler(async (req, res) => {
   const user = await getAuthUser(req);
   if (!user || user.role !== 'citizen') {
     res.status(401).json({ error: 'Hanya warga yang dapat mencatat setoran sampah.' });
@@ -267,10 +274,10 @@ app.post('/api/deposits', async (req, res) => {
   await saveNotification(adminNotif.id, adminNotif);
 
   res.status(201).json(newDeposit);
-});
+}));
 
 // Approve or Reject Deposit (Admin only)
-app.put('/api/deposits/:id/status', async (req, res) => {
+app.put('/api/deposits/:id/status', asyncHandler(async (req, res) => {
   const user = await getAuthUser(req);
   if (!user || user.role !== 'admin') {
     res.status(403).json({ error: 'Hanya Admin (Pak RT) yang memiliki otorisasi ini!' });
@@ -340,20 +347,20 @@ app.put('/api/deposits/:id/status', async (req, res) => {
   }
 
   res.json({ ...deposit, ...updateData });
-});
+}));
 
 // ==========================================
 // 3. REWARDS MARKETPLACE & CLAIMS API
 // ==========================================
 
 // Get all rewards
-app.get('/api/rewards', async (req, res) => {
+app.get('/api/rewards', asyncHandler(async (req, res) => {
   const rewards = await getRewards();
   res.json(rewards);
-});
+}));
 
 // Get claims
-app.get('/api/claims', async (req, res) => {
+app.get('/api/claims', asyncHandler(async (req, res) => {
   const user = await getAuthUser(req);
   if (!user) {
     res.status(401).json({ error: 'Unauthorized' });
@@ -366,10 +373,10 @@ app.get('/api/claims', async (req, res) => {
   } else {
     res.json(claims.filter(c => c.userId === user.id));
   }
-});
+}));
 
 // Claim a reward (Citizen only)
-app.post('/api/claims', async (req, res) => {
+app.post('/api/claims', asyncHandler(async (req, res) => {
   const user = await getAuthUser(req);
   if (!user || user.role !== 'citizen') {
     res.status(401).json({ error: 'Hanya warga yang dapat melakukan penukaran poin.' });
@@ -440,10 +447,10 @@ app.post('/api/claims', async (req, res) => {
   await saveNotification(adminClaimNotif.id, adminClaimNotif);
 
   res.status(201).json({ claim: newClaim, currentPoints: citizen.points - reward.pointsCost });
-});
+}));
 
 // Update claim status (Admin completes delivery)
-app.put('/api/claims/:id/status', async (req, res) => {
+app.put('/api/claims/:id/status', asyncHandler(async (req, res) => {
   const user = await getAuthUser(req);
   if (!user || user.role !== 'admin') {
     res.status(403).json({ error: 'Hanya Admin yang dapat menyelesaikan status klaim.' });
@@ -484,12 +491,12 @@ app.put('/api/claims/:id/status', async (req, res) => {
   await saveNotification(citizenNotif.id, citizenNotif);
 
   res.json({ ...claim, status: 'completed' });
-});
+}));
 
 // ==========================================
 // 4. LEADERBOARD API
 // ==========================================
-app.get('/api/leaderboard', async (req, res) => {
+app.get('/api/leaderboard', asyncHandler(async (req, res) => {
   const users = await getUsers();
   // Filter out admins from leaderboard, and sort citizens by points (and trash weight)
   const citizens = Object.values(users)
@@ -504,22 +511,22 @@ app.get('/api/leaderboard', async (req, res) => {
     .sort((a, b) => b.points - a.points || b.totalTrashWeight - a.totalTrashWeight);
 
   res.json(citizens);
-});
+}));
 
 // ==========================================
 // 5. SCHEDULES API
 // ==========================================
-app.get('/api/schedules', async (req, res) => {
+app.get('/api/schedules', asyncHandler(async (req, res) => {
   const schedules = await getSchedules();
   res.json(schedules);
-});
+}));
 
 // ==========================================
 // 6. CLEANLINESS FEEDBACK API
 // ==========================================
 
 // Submit feedback (Citizen only)
-app.post('/api/feedback', async (req, res) => {
+app.post('/api/feedback', asyncHandler(async (req, res) => {
   const user = await getAuthUser(req);
   if (!user || user.role !== 'citizen') {
     res.status(401).json({ error: 'Hanya warga yang dapat mengirim umpan balik.' });
@@ -562,10 +569,10 @@ app.post('/api/feedback', async (req, res) => {
   await saveNotification(adminNotif.id, adminNotif);
 
   res.status(201).json(newFeedback);
-});
+}));
 
 // Get all feedback (Admin only)
-app.get('/api/feedback', async (req, res) => {
+app.get('/api/feedback', asyncHandler(async (req, res) => {
   const user = await getAuthUser(req);
   if (!user || user.role !== 'admin') {
     res.status(403).json({ error: 'Akses terbatas untuk Pengurus RT saja.' });
@@ -573,14 +580,14 @@ app.get('/api/feedback', async (req, res) => {
   }
   const feedbacks = await getFeedbacks();
   res.json(feedbacks);
-});
+}));
 
 // ==========================================
 // 7. REAL-TIME NOTIFICATIONS API
 // ==========================================
 
 // Get notifications for authenticated user
-app.get('/api/notifications', async (req, res) => {
+app.get('/api/notifications', asyncHandler(async (req, res) => {
   const user = await getAuthUser(req);
   if (!user) {
     res.status(401).json({ error: 'Unauthorized' });
@@ -593,10 +600,10 @@ app.get('/api/notifications', async (req, res) => {
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   res.json(userNotifications);
-});
+}));
 
 // Mark all as read
-app.put('/api/notifications/read-all', async (req, res) => {
+app.put('/api/notifications/read-all', asyncHandler(async (req, res) => {
   const user = await getAuthUser(req);
   if (!user) {
     res.status(401).json({ error: 'Unauthorized' });
@@ -611,10 +618,10 @@ app.put('/api/notifications/read-all', async (req, res) => {
   }
 
   res.json({ success: true });
-});
+}));
 
 // Admin-wide summary overview statistics API
-app.get('/api/admin/summary', async (req, res) => {
+app.get('/api/admin/summary', asyncHandler(async (req, res) => {
   const user = await getAuthUser(req);
   if (!user || user.role !== 'admin') {
     res.status(403).json({ error: 'Forbidden' });
@@ -660,6 +667,15 @@ app.get('/api/admin/summary', async (req, res) => {
     categoryWeights,
     recentDeposits: deposits.slice(0, 5),
     recentClaims: claims.slice(0, 5)
+  });
+}));
+
+// Global error handler middleware
+app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  console.error('Unhandled server error:', err);
+  res.status(500).json({
+    error: 'Internal Server Error',
+    message: err instanceof Error ? err.message : String(err)
   });
 });
 

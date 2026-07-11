@@ -2,14 +2,10 @@ import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore, setLogLevel } from 'firebase/firestore';
 import { doc, getDocFromServer } from 'firebase/firestore';
-import fs from 'fs';
-import path from 'path';
+import firebaseConfig from '../firebase-applet-config.json';
 
 // Set logging level to error to avoid benign gRPC idle stream warnings
 setLogLevel('error');
-
-const configPath = path.join(process.cwd(), 'firebase-applet-config.json');
-const firebaseConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'));
 
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);

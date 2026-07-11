@@ -15,7 +15,7 @@ import {
   where, 
   orderBy 
 } from 'firebase/firestore';
-import { db, handleFirestoreError, OperationType } from './firebase.ts';
+import { db, handleFirestoreError, OperationType } from './firebase';
 import { 
   User, 
   TrashDeposit, 
@@ -25,7 +25,7 @@ import {
   PickupSchedule, 
   SystemNotification,
   TrashCategory
-} from './types.ts';
+} from './types';
 
 // Encryption Settings
 const ENCRYPTION_ALGORITHM = 'aes-256-cbc';
