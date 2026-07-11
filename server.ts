@@ -671,6 +671,12 @@ async function startServer() {
   // Ensure Firestore is properly seeded
   await seedFirestoreIfNeeded();
 
+  if (process.env.VERCEL) {
+    // On Vercel, the serverless handler handles routing.
+    // Static files and SPA fallbacks are managed by Vercel's edge network via vercel.json.
+    return;
+  }
+
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
       server: { middlewareMode: true },
@@ -691,3 +697,5 @@ async function startServer() {
 }
 
 startServer();
+
+export default app;
