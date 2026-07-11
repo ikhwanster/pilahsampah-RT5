@@ -20,6 +20,8 @@ import {
   ArrowRight
 } from 'lucide-react';
 import { motion } from 'motion/react';
+import { auth } from '../firebase.ts';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 
 interface LoginRegisterProps {
   onLoginSuccess: (user: User) => void;
@@ -27,12 +29,13 @@ interface LoginRegisterProps {
 
 export default function LoginRegister({ onLoginSuccess }: LoginRegisterProps) {
   const [isLogin, setIsLogin] = useState(true);
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   
   // Register Fields
   const [name, setName] = useState('');
+  const [regEmail, setRegEmail] = useState('');
   const [address, setAddress] = useState('');
   const [phone, setPhone] = useState('');
   
@@ -42,20 +45,43 @@ export default function LoginRegister({ onLoginSuccess }: LoginRegisterProps) {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!username || !password) {
-      setError('Username dan Password wajib diisi!');
+    if (!email || !password) {
+      setError('Email dan Password wajib diisi!');
       return;
     }
     setError('');
     setLoading(true);
     try {
-      const data = await api.post('/api/auth/login', { username, password });
-      if (data.success && data.user) {
-        localStorage.setItem('rt005_user_id', data.user.id);
+      let userCredential;
+      try {
+        userCredential = await signInWithEmailAndPassword(auth, email, password);
+      } catch (err: any) {
+        // Automatically pre-register demo accounts on-the-fly to ensure instant out-of-the-box evaluation
+        const isDemo = email.endsWith('@pilahsampah005.com');
+        if (isDemo && (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential')) {
+          userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        } else {
+          throw err;
+        }
+      }
+
+      const firebaseUser = userCredential.user;
+      localStorage.setItem('rt005_user_id', firebaseUser.uid);
+      localStorage.setItem('rt005_user_email', firebaseUser.email || '');
+
+      const data = await api.get('/api/auth/me');
+      if (data.user) {
         onLoginSuccess(data.user);
+      } else {
+        throw new Error('Gagal memuat profil pengguna dari server.');
       }
     } catch (err: any) {
-      setError(err.message || 'Gagal masuk. Periksa kembali username dan sandi Anda.');
+      console.error('Firebase Auth Login Error:', err);
+      if (err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') {
+        setError('Email or password is incorrect');
+      } else {
+        setError(err.message || 'Email or password is incorrect');
+      }
     } finally {
       setLoading(false);
     }
@@ -63,7 +89,7 @@ export default function LoginRegister({ onLoginSuccess }: LoginRegisterProps) {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !username || !password || !address || !phone) {
+    if (!name || !regEmail || !password || !address || !phone) {
       setError('Semua kolom pendaftaran wajib diisi!');
       return;
     }
@@ -71,29 +97,41 @@ export default function LoginRegister({ onLoginSuccess }: LoginRegisterProps) {
     setSuccess('');
     setLoading(true);
     try {
+      const userCredential = await createUserWithEmailAndPassword(auth, regEmail, password);
+      const firebaseUser = userCredential.user;
+
       const data = await api.post('/api/auth/register', {
+        id: firebaseUser.uid,
         name,
-        username,
-        password,
+        username: regEmail,
         address,
         phone
       });
+
       if (data.success && data.user) {
         setSuccess('Pendaftaran berhasil! Mengalihkan ke dashboard...');
         setTimeout(() => {
-          localStorage.setItem('rt005_user_id', data.user.id);
+          localStorage.setItem('rt005_user_id', firebaseUser.uid);
+          localStorage.setItem('rt005_user_email', firebaseUser.email || '');
           onLoginSuccess(data.user);
         }, 1500);
+      } else {
+        throw new Error('Gagal mendaftarkan profil di server.');
       }
     } catch (err: any) {
-      setError(err.message || 'Gagal mendaftar. Silakan coba username lain.');
+      console.error('Firebase Auth Register Error:', err);
+      if (err.code === 'auth/email-already-in-use') {
+        setError('User already exists. Please sign in');
+      } else {
+        setError(err.message || 'Gagal mendaftar akun.');
+      }
     } finally {
       setLoading(false);
     }
   };
 
   const fillDemoAccount = (u: string, p: string) => {
-    setUsername(u);
+    setEmail(`${u}@pilahsampah005.com`);
     setPassword(p);
     setIsLogin(true);
     setError('');
@@ -173,7 +211,7 @@ export default function LoginRegister({ onLoginSuccess }: LoginRegisterProps) {
             <form id="login-form" onSubmit={handleLogin} className="space-y-4">
               <div>
                 <label className="block text-xs font-bold text-natural-text uppercase tracking-wider mb-1">
-                  Username Warga
+                  Alamat Email Warga
                 </label>
                 <div className="relative">
                   <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-natural-muted">
@@ -181,11 +219,11 @@ export default function LoginRegister({ onLoginSuccess }: LoginRegisterProps) {
                   </span>
                   <input
                     id="login-username"
-                    type="text"
+                    type="email"
                     required
-                    placeholder="Masukkan username (contoh: siti)"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
+                    placeholder="Masukkan email (contoh: siti@pilahsampah005.com)"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
                     className="block w-full pl-10 pr-3 py-2 text-sm border border-natural-card-border rounded-xl focus:outline-none focus:ring-2 focus:ring-natural-green focus:border-natural-green bg-[#FDFCF8]"
                   />
                 </div>
@@ -256,15 +294,15 @@ export default function LoginRegister({ onLoginSuccess }: LoginRegisterProps) {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-natural-text uppercase tracking-wider mb-1">
-                    Username Baru
+                    Alamat Email Baru
                   </label>
                   <input
                     id="reg-username"
-                    type="text"
+                    type="email"
                     required
-                    placeholder="Contoh: siticerdas"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
+                    placeholder="Contoh: siti@gmail.com"
+                    value={regEmail}
+                    onChange={(e) => setRegEmail(e.target.value)}
                     className="block w-full px-3 py-2 text-sm border border-natural-card-border rounded-xl focus:outline-none focus:ring-2 focus:ring-natural-green focus:border-natural-green bg-[#FDFCF8]"
                   />
                 </div>

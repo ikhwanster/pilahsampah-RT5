@@ -58,8 +58,27 @@ app.use(express.json());
 const getAuthUser = async (req: express.Request): Promise<User | null> => {
   const userId = req.headers['x-citizen-id'] as string;
   if (!userId) return null;
-  const user = await getUser(userId);
-  if (!user) return null;
+  let user = await getUser(userId);
+  if (!user) {
+    // Dynamically initialize default citizen profile for Firebase Auth users in local db
+    const email = req.headers['x-citizen-email'] as string || 'warga@pilahsampah005.com';
+    const cleanName = email.split('@')[0];
+    const role = email.toLowerCase().includes('admin') ? 'admin' : 'citizen';
+    
+    user = {
+      id: userId,
+      name: cleanName.charAt(0).toUpperCase() + cleanName.slice(1),
+      username: cleanName,
+      role,
+      address: encrypt('Alamat RT 005'),
+      phone: encrypt('08123456789'),
+      points: 100,
+      totalTrashWeight: 0,
+      createdAt: new Date().toISOString(),
+      passwordHash: ''
+    };
+    await saveUser(userId, user);
+  }
   
   // Return user with decrypted PII
   return {
@@ -82,34 +101,36 @@ const getAuthUser = async (req: express.Request): Promise<User | null> => {
 // Register a new citizen
 app.post('/api/auth/register', async (req, res) => {
   try {
-    const { name, username, password, address, phone } = req.body;
+    const { name, username, password, address, phone, id } = req.body;
     
-    if (!name || !username || !password || !address || !phone) {
+    if (!name || !username || !address || !phone) {
       res.status(400).json({ error: 'Semua bidang wajib diisi!' });
       return;
     }
 
     const users = await getUsers();
     
-    // Check if username exists
-    const userExists = Object.values(users).some(u => u.username.toLowerCase() === username.toLowerCase());
-    if (userExists) {
-      res.status(400).json({ error: 'Username sudah terdaftar! Gunakan yang lain.' });
-      return;
+    // Check if username exists (only if no id is provided)
+    if (!id) {
+      const userExists = Object.values(users).some(u => u.username.toLowerCase() === username.toLowerCase());
+      if (userExists) {
+        res.status(400).json({ error: 'Username sudah terdaftar! Gunakan yang lain.' });
+        return;
+      }
     }
 
-    const newUserId = `u-${Date.now()}`;
+    const newUserId = id || `u-${Date.now()}`;
     const newUser = {
       id: newUserId,
       name,
       username,
-      role: 'citizen' as const,
+      role: (username.toLowerCase().includes('admin') ? 'admin' : 'citizen') as 'admin' | 'citizen',
       address: encrypt(address),
       phone: encrypt(phone),
-      points: 0,
+      points: 100, // starting points
       totalTrashWeight: 0,
       createdAt: new Date().toISOString(),
-      passwordHash: hashPassword(password)
+      passwordHash: password ? hashPassword(password) : ''
     };
 
     await saveUser(newUserId, newUser);

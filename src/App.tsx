@@ -6,37 +6,50 @@ import CitizenDashboard from './components/CitizenDashboard.tsx';
 import AdminDashboard from './components/AdminDashboard.tsx';
 import { Leaf, RefreshCw } from 'lucide-react';
 import { motion } from 'motion/react';
+import { auth } from './firebase.ts';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Attempt to restore user session on mount
+  // Attempt to restore user session on mount using Firebase Auth state listener
   useEffect(() => {
-    const restoreSession = async () => {
-      const storedId = localStorage.getItem('rt005_user_id');
-      if (storedId) {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        localStorage.setItem('rt005_user_id', firebaseUser.uid);
+        localStorage.setItem('rt005_user_email', firebaseUser.email || '');
         try {
           const res = await api.get('/api/auth/me');
           if (res.user) {
             setUser(res.user);
           } else {
-            localStorage.removeItem('rt005_user_id');
+            setUser(null);
           }
         } catch (err) {
           console.error('Session restoration failed:', err);
-          localStorage.removeItem('rt005_user_id');
+          setUser(null);
         }
+      } else {
+        localStorage.removeItem('rt005_user_id');
+        localStorage.removeItem('rt005_user_email');
+        setUser(null);
       }
       setLoading(false);
-    };
+    });
 
-    restoreSession();
+    return () => unsubscribe();
   }, []);
 
-  const handleLogout = () => {
-    localStorage.removeItem('rt005_user_id');
-    setUser(null);
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      localStorage.removeItem('rt005_user_id');
+      localStorage.removeItem('rt005_user_email');
+      setUser(null);
+    } catch (err) {
+      console.error('Logout failed:', err);
+    }
   };
 
   if (loading) {

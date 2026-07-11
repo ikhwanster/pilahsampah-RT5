@@ -7,9 +7,23 @@ import firebaseConfig from '../firebase-applet-config.json';
 // Set logging level to error to avoid benign gRPC idle stream warnings
 setLogLevel('error');
 
+// Initialize Default App for Applet Firestore
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
-export const auth = getAuth();
+
+// Initialize Custom App for user's Firebase Authentication only
+const customFirebaseConfig = {
+  apiKey: "AIzaSyDDYDE2aT-vNvaAIJ4a237Cz1YxYD_1oJo",
+  authDomain: "pilahsampah005.firebaseapp.com",
+  projectId: "pilahsampah005",
+  storageBucket: "pilahsampah005.firebasestorage.app",
+  messagingSenderId: "35843081003",
+  appId: "1:35843081003:web:ff4e4ac0b320e60e56bb6e",
+  measurementId: "G-2M0Y7ZQG45"
+};
+
+const customAuthApp = initializeApp(customFirebaseConfig, 'customAuthApp');
+export const auth = getAuth(customAuthApp);
 
 async function testConnection() {
   try {
