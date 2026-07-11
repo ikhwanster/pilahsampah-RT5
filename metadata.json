@@ -1,0 +1,6 @@
+{
+  "name": "Pilah Sampah RT 005",
+  "description": "Aplikasi pengelolaan program pilah sampah warga RT 005 RW 013, Taman Buaran Indah IV. Fitur meliputi pencatatan berat sampah, perolehan poin, leaderboard bulanan, pengingat jadwal penjemputan, dashboard admin, riwayat transaksi, dan penilaian layanan kebersihan.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

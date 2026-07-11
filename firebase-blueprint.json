@@ -1,0 +1,143 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile containing PII and point balance",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "username": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "citizen"] },
+        "address": { "type": "string" },
+        "phone": { "type": "string" },
+        "points": { "type": "integer" },
+        "totalTrashWeight": { "type": "number" },
+        "createdAt": { "type": "string" },
+        "passwordHash": { "type": "string" }
+      },
+      "required": ["id", "name", "username", "role", "address", "phone", "points", "totalTrashWeight", "createdAt", "passwordHash"]
+    },
+    "TrashDeposit": {
+      "title": "TrashDeposit",
+      "description": "Trash deposit records submitted by residents",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "category": { "type": "string", "enum": ["organic", "plastic", "paper", "metal", "glass", "other"] },
+        "weight": { "type": "number" },
+        "pointsEarned": { "type": "integer" },
+        "date": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+        "notes": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "approvedAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "userName", "category", "weight", "pointsEarned", "date", "status", "createdAt"]
+    },
+    "RewardItem": {
+      "title": "RewardItem",
+      "description": "Items available in the sembako marketplace",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "pointsCost": { "type": "integer" },
+        "stock": { "type": "integer" },
+        "image": { "type": "string" }
+      },
+      "required": ["id", "title", "description", "pointsCost", "stock"]
+    },
+    "RewardClaim": {
+      "title": "RewardClaim",
+      "description": "Sembako rewards claimed by residents",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "rewardId": { "type": "string" },
+        "rewardTitle": { "type": "string" },
+        "pointsCost": { "type": "integer" },
+        "status": { "type": "string", "enum": ["pending", "completed"] },
+        "claimedAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "userName", "rewardId", "rewardTitle", "pointsCost", "status", "claimedAt"]
+    },
+    "CleanupFeedback": {
+      "title": "CleanupFeedback",
+      "description": "Aspirations and service satisfaction feedback from residents",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "rating": { "type": "integer" },
+        "comment": { "type": "string" },
+        "serviceType": { "type": "string", "enum": ["pickup", "cleanliness", "app"] },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "userName", "rating", "comment", "serviceType", "createdAt"]
+    },
+    "PickupSchedule": {
+      "title": "PickupSchedule",
+      "description": "Weekly pickup schedule for different trash categories",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "day": { "type": "string" },
+        "time": { "type": "string" },
+        "category": { "type": "string" },
+        "notes": { "type": "string" }
+      },
+      "required": ["id", "day", "time", "category"]
+    },
+    "SystemNotification": {
+      "title": "SystemNotification",
+      "description": "Real-time notifications sent to users",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "message": { "type": "string" },
+        "type": { "type": "string", "enum": ["points_earned", "reward_status", "schedule_reminder", "general"] },
+        "isRead": { "type": "boolean" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "message", "type", "isRead", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profile with login credentials, role, stats and points"
+    },
+    "/deposits/{depositId}": {
+      "schema": "TrashDeposit",
+      "description": "Sembako points trash deposit details"
+    },
+    "/rewards/{rewardId}": {
+      "schema": "RewardItem",
+      "description": "Marketplace reward offerings"
+    },
+    "/claims/{claimId}": {
+      "schema": "RewardClaim",
+      "description": "Point-based sembako reward claim transactions"
+    },
+    "/feedbacks/{feedbackId}": {
+      "schema": "CleanupFeedback",
+      "description": "Resident satisfaction and feedback reviews"
+    },
+    "/schedules/{scheduleId}": {
+      "schema": "PickupSchedule",
+      "description": "Collection schedule lists"
+    },
+    "/notifications/{notificationId}": {
+      "schema": "SystemNotification",
+      "description": "Real-time alerts for point earnings or reward status"
+    }
+  }
+}
